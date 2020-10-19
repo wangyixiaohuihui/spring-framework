@@ -1338,6 +1338,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		if (mbd != null && !mbd.stale) {
 			return mbd;
 		}
+		// 没有合并，执行同名不同参数的另一个方法
 		return getMergedBeanDefinition(beanName, getBeanDefinition(beanName));
 	}
 
@@ -1370,30 +1371,43 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			throws BeanDefinitionStoreException {
 
 		synchronized (this.mergedBeanDefinitions) {
+			// 最终返回的合并名称 mergedBeanDefinition
 			RootBeanDefinition mbd = null;
 			RootBeanDefinition previous = null;
 
 			// Check with full lock now in order to enforce the same merged instance.
+			// containingBd 传进来的就是null，检测之前是否已经合并过
 			if (containingBd == null) {
 				mbd = this.mergedBeanDefinitions.get(beanName);
 			}
 
+			// 如果合并了，就不走if直接return mbd;没有合并再执行if语句里面的
 			if (mbd == null || mbd.stale) {
 				previous = mbd;
+				// 这个if else 是判断是否有父类
+				//
 				if (bd.getParentName() == null) {
+					// 如果没有父类，分两种情况
 					// Use copy of given root bean definition.
 					if (bd instanceof RootBeanDefinition) {
+						// 1. bd是 RootBeanDefinition类型
+						// 如果没有父类，并且bd是RootBeanDefinition类型的，就copy一份返回
 						mbd = ((RootBeanDefinition) bd).cloneBeanDefinition();
-					}
-					else {
+					}  else {
+						// 2. bd不是 RootBeanDefinition
+						// 如果没有父类，bd又不是RootBeanDefinition，就复制一份为RootBeanDefinition
 						mbd = new RootBeanDefinition(bd);
 					}
-				}
-				else {
+				}  else {
+					// 如果有父类  就需要进行合并属性
+					// pbd 就是父类的bd， parentBeanDefinition
 					// Child bean definition: needs to be merged with parent.
 					BeanDefinition pbd;
 					try {
+						// 处理父类的beanName
 						String parentBeanName = transformedBeanName(bd.getParentName());
+
+						// 下面进行递归获取父类的 parentBeaDefinition
 						if (!beanName.equals(parentBeanName)) {
 							pbd = getMergedBeanDefinition(parentBeanName);
 						}
@@ -1414,7 +1428,9 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 								"Could not resolve parent bean definition '" + bd.getParentName() + "'", ex);
 					}
 					// Deep copy with overridden values.
+					// 把pbd进行深度拷贝，返回RootBeanDefinition类型的mbd
 					mbd = new RootBeanDefinition(pbd);
+					// 把传进来的bd与父类合并后的mbd进行合并，这样传入的bd就与父类属性进行了合并
 					mbd.overrideFrom(bd);
 				}
 
@@ -1843,6 +1859,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			Object beanInstance, String name, String beanName, @Nullable RootBeanDefinition mbd) {
 
 		// Don't let calling code try to dereference the factory if the bean isn't a factory.
+		// 要获取的bean是 FactoryBean的引用，但是 beanInstance 不是FactoryBean 的就抛异常；
+		// 判断输入bean 的name 是否是工厂实例相关（前缀是 &）
 		if (BeanFactoryUtils.isFactoryDereference(name)) {
 			if (beanInstance instanceof NullBean) {
 				return beanInstance;
@@ -1868,16 +1886,20 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			mbd.isFactoryBean = true;
 		}
 		else {
+			// 尝试从缓存中获取
 			object = getCachedObjectForFactoryBean(beanName);
 		}
 		if (object == null) {
 			// Return bean instance from factory.
+			// 强转为 beanFactory。 此时的beanInstance 一定是 FactoryBean 类型
 			FactoryBean<?> factory = (FactoryBean<?>) beanInstance;
 			// Caches object obtained from FactoryBean if it is a singleton.
 			if (mbd == null && containsBeanDefinition(beanName)) {
+				// 进行父子 类的合并，
 				mbd = getMergedLocalBeanDefinition(beanName);
 			}
 			boolean synthetic = (mbd != null && mbd.isSynthetic());
+			// 把核心功能托付给 getObjectFromFactoryBean
 			object = getObjectFromFactoryBean(factory, beanName, !synthetic);
 		}
 		return object;
