@@ -48,6 +48,9 @@ import org.springframework.aop.SpringProxy;
 public class DefaultAopProxyFactory implements AopProxyFactory, Serializable {
 
 	/**
+	 * 如果目标对象实现了接口 默认会采用JDK 的动态代理实现AOP
+	 * 如果目标对象实现了接口 可以强制 使用cglib 实现AOP
+	 * 如果目标对象 没有实现接口， 必须采用  CGLIB
 	 * Whether this environment lives within a native image.
 	 * Exposed as a private static field rather than in a {@code NativeImageDetector.inNativeImage()} static method due to https://github.com/oracle/graal/issues/2594.
 	 * @see <a href="https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/ImageInfo.java">ImageInfo.java</a>

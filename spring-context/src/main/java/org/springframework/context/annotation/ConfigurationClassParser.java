@@ -171,10 +171,14 @@ class ConfigurationClassParser {
 		for (BeanDefinitionHolder holder : configCandidates) {
 			BeanDefinition bd = holder.getBeanDefinition();
 			try {
+				// 根据bean定义的不同类型，实现不同的分支，但是最终都会调用方法
+				// processConfigurationClass（ConfigurationClass configClass）
 				if (bd instanceof AnnotatedBeanDefinition) {
+					// bd 是一个 AnnotatedBeanDefinition
 					parse(((AnnotatedBeanDefinition) bd).getMetadata(), holder.getBeanName());
 				}
 				else if (bd instanceof AbstractBeanDefinition && ((AbstractBeanDefinition) bd).hasBeanClass()) {
+					// bd 是一个 AbstractBeanDefinition,并且指定 beanClass 属性
 					parse(((AbstractBeanDefinition) bd).getBeanClass(), holder.getBeanName());
 				}
 				else {
@@ -222,6 +226,12 @@ class ConfigurationClassParser {
 	}
 
 
+	/**
+	 * 用于分析一个 ConfigurationClass，分析之后将它记录到已处理配置类记录
+	 * @param configClass 配置类
+	 * @param filter
+	 * @throws IOException
+	 */
 	protected void processConfigurationClass(ConfigurationClass configClass, Predicate<String> filter) throws IOException {
 		if (this.conditionEvaluator.shouldSkip(configClass.getMetadata(), ConfigurationPhase.PARSE_CONFIGURATION)) {
 			return;
@@ -231,6 +241,8 @@ class ConfigurationClassParser {
 		if (existingClass != null) {
 			if (configClass.isImported()) {
 				if (existingClass.isImported()) {
+					//如果要处理的配置类configClass在已经分析处理的配置类记录中已存在，
+					//合并二者的importedBy属性
 					existingClass.mergeImportedBy(configClass);
 				}
 				// Otherwise ignore new imported config class; existing non-imported class overrides it.
@@ -245,6 +257,9 @@ class ConfigurationClassParser {
 		}
 
 		// Recursively process the configuration class and its superclass hierarchy.
+		// Recursively process the configuration class and its superclass hierarchy.
+		// 从当前配置类configClass开始向上沿着类继承结构逐层执行doProcessConfigurationClass,
+		// 直到遇到的父类是由Java提供的类结束循环
 		SourceClass sourceClass = asSourceClass(configClass, filter);
 		do {
 			sourceClass = doProcessConfigurationClass(configClass, sourceClass, filter);
@@ -255,6 +270,7 @@ class ConfigurationClassParser {
 	}
 
 	/**
+	 * 对一个配置类执行的真正的处理
 	 * Apply processing and build a complete {@link ConfigurationClass} by reading the
 	 * annotations, members and methods from the source class. This method can be called
 	 * multiple times as relevant sources are discovered.
@@ -285,13 +301,15 @@ class ConfigurationClassParser {
 			}
 		}
 
-		// Process any @ComponentScan annotations
+		// Process any @ComponentScan annotations，处理每个@ComponentScan注解
 		Set<AnnotationAttributes> componentScans = AnnotationConfigUtils.attributesForRepeatable(
 				sourceClass.getMetadata(), ComponentScans.class, ComponentScan.class);
 		if (!componentScans.isEmpty() &&
 				!this.conditionEvaluator.shouldSkip(sourceClass.getMetadata(), ConfigurationPhase.REGISTER_BEAN)) {
 			for (AnnotationAttributes componentScan : componentScans) {
+				// // 该配置类上注解了@ComponentScan,现在执行扫描，获取其中的Bean定义
 				// The config class is annotated with @ComponentScan -> perform the scan immediately
+				//  ComponentScanAnnotationParser，在当前对象的构造函数中 被创建
 				Set<BeanDefinitionHolder> scannedBeanDefinitions =
 						this.componentScanParser.parse(componentScan, sourceClass.getMetadata().getClassName());
 				// Check the set of scanned definitions for any further config classes and parse recursively if needed
@@ -308,6 +326,7 @@ class ConfigurationClassParser {
 		}
 
 		// Process any @Import annotations
+		// 注意这里调用到了getImports()方法，它会搜集sourceClass上所有的@Import注解的value值，
 		processImports(configClass, sourceClass, getImports(sourceClass), filter, true);
 
 		// Process any @ImportResource annotations
@@ -322,13 +341,13 @@ class ConfigurationClassParser {
 			}
 		}
 
-		// Process individual @Bean methods
+		// Process individual @Bean methods  @Bean methods,处理配置类中每个带有@Bean注解的方法
 		Set<MethodMetadata> beanMethods = retrieveBeanMethodMetadata(sourceClass);
 		for (MethodMetadata methodMetadata : beanMethods) {
 			configClass.addBeanMethod(new BeanMethod(methodMetadata, configClass));
 		}
 
-		// Process default methods on interfaces
+		// Process default methods on interfaces 处理接口上的缺省方法
 		processInterfaces(configClass, sourceClass);
 
 		// Process superclass, if any
@@ -342,7 +361,7 @@ class ConfigurationClassParser {
 			}
 		}
 
-		// No superclass -> processing is complete
+		// No superclass -> processing is complete 没找到需要处理的父类，处理结果
 		return null;
 	}
 
