@@ -19,6 +19,7 @@ package org.springframework.context.annotation;
 import java.util.Arrays;
 import java.util.function.Supplier;
 
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanDefinitionCustomizer;
 import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
@@ -87,7 +88,7 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * @param componentClasses one or more component classes &mdash; for example,
 	 * {@link Configuration @Configuration} classes
 	 */
-	public AnnotationConfigApplicationContext(Class<?>... componentClasses) {
+	public AnnotationConfigApplicationContext(Class<?>... componentClasses) throws BeansException {
 		this();
 		register(componentClasses);
 		refresh();
